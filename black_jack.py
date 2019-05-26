@@ -178,6 +178,7 @@ registra_jogador()
 criar_jogadores()
 print(jogadores[0].nome)
 print(jogadores[0].carteira)
+print(jogadores[0].status)
 
 
     
