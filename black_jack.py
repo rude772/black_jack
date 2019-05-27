@@ -5,11 +5,10 @@ Created on Fri May 24 19:30:42 2019
 @author: tiago
 """
 from random import choice
-from IPython.display import clear_output
 
 #Cria a classe dos jogadores. Por padrão, todo jogador começa uma partida com 1000 dinheiros e ativo no jogo
 class Jogador(object):
-    cartas_valores = {'A':1,'J':10,'Q':10,'K':10,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10}
+    cartas_valores = {'A':10,'J':10,'Q':10,'K':10,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10}
     mao_cartas_jogador = []
     soma = 0
     def __init__(self, nome, carteira=1000, status=True, status_rodada=True, apostas=0):
@@ -37,6 +36,7 @@ class Jogador(object):
         return valor
 
     def mao_cartas(self, carta, nome):
+        c = 0
         if carta[0].isalpha() or carta[0] != '1':
             self.mao_valor = self.cartas_valores[carta[0]]
             self.soma += self.mao_valor
@@ -45,10 +45,16 @@ class Jogador(object):
             self.mao_valor = 10
             self.soma += self.mao_valor
             self.mao_cartas_jogador.append(carta)
+        for checa_as in self.mao_cartas_jogador:
+            if self.mao_cartas_jogador[c][0] == 'A' and self.soma > 21:
+                self.soma -= 9
+                c += 1
         return print(self.nome, self.mao_cartas_jogador, self.soma)
     
     def reset_mao(self):
         self.mao_cartas_jogador = []
+        self.soma = 0
+        self.status_rodada=True
         return self.mao_cartas_jogador
     
     def add_dindin(self, valor):
@@ -83,6 +89,7 @@ class Dealer(object):
         return self.banca
     
     def mao_dealer(self, carta):
+        c = 0
         if carta[0].isalpha() or carta[0] != '1':
             self.mao_valor = self.cartas_valores[carta[0]]
             self.soma += self.mao_valor
@@ -91,11 +98,16 @@ class Dealer(object):
             self.mao_valor = 10
             self.soma += self.mao_valor
             self.mao_cartas_dealer.append(carta)
+        for checa_as in self.mao_cartas_dealer:
+            if self.mao_cartas_dealer[c][0] == 'A' and self.soma > 21:
+                self.soma -= 9
+                c += 1
         return print('Dealer', self.mao_cartas_dealer, self.soma)
     
     def reset_mao(self):
-        self.mao_dealer = []
-        return self.mao_dealer
+        self.mao_cartas_dealer = []
+        self.soma = 0
+        return self.mao_cartas_dealer
     
     def set_level(self):
         while True:
@@ -135,12 +147,11 @@ class Baralho(object):
 
 def registra_jogador():
     global jogadores
-    global mao_jogadores
     jogadores = [input('Digite nome do jogador: ')]
     novo = input('deseja registrar novo jogador? Sim, Não: ').lower()
     if novo[0] == 's':
         jogadores.append(input('Digite nome do jogador: '))
-    return jogadores, mao_jogadores
+    return jogadores
 
 def criar_jogadores():
     global jogadores
@@ -171,43 +182,51 @@ def rodada1():
     rodada2()
     return
 
+def reset_rodada():
+    print('terminar de configurar a função reset_rodada')
+    baralho.reset()
+    dealer.reset_mao()
+    j = 0
+    for reset in jogadores:
+        jogadores[j].reset_mao()
+        j += 1
+    return
+
 def dealer_rodada():
-    if jogadores[0].status_rodada == True or jogadores[1].status_rodada == True:
-        while dealer.soma < 17 or dealer.soma <= jogadores[0].soma or dealer.soma <= jogadores[1].soma:
-            dealer.mao_dealer(baralho.tira_carta())
-        if dealer.soma <=21:
-            if dealer.soma > jogadores[0].soma and jogadores[0].status_rodada == True:
-                dealer.add_dindin(jogadores[0].apostas)
-                print(dealer.banca)
-            elif dealer.soma < jogadores[0].soma and jogadores[0].status_rodada == True:
-                dealer.tira_dindin(jogadores[0].apostas)
-                jogadores[0].add_dindin(jogadores[0].apostas*2)
-                print(jogadores[0].carteira)
-                print(dealer.banca)                
-            elif dealer.soma > jogadores[1].soma and jogadores[0].status_rodada == True:
-                dealer.add_dindin(jogadores[1].apostas)
-                print(dealer.banca)
-            elif dealer.soma < jogadores[1].soma and jogadores[0].status_rodada == True:
-                dealer.tira_dindin(jogadores[1].apostas)
-                jogadores[1].add_dindin(jogadores[1].apostas*2)
-                print(jogadores[1].carteira)
-                print(dealer.banca)
-            elif dealer.soma == jogadores[0].soma and jogadores[0].status_rodada == True:
-                jogadores[0].add_dindin(jogadores[0].apostas)
-            elif dealer.soma == jogadores[1].soma and jogadores[0].status_rodada == True:
-                jogadores[1].add_dindin(jogadores[1].apostas)
-            else:
-                print('alguma merda deu errado, pq não tem else aqui. Logica dealer')
-        elif dealer > 21 and jogadores[0].status_rodada == True:
-            jogadores[0].add_dindin(jogadores[0].apostas)                      
-            print('dealer estourou')
-            print(dealer.soma, dealer.banca)
-        elif dealer > 21 and jogadores[1].status_rodada == True:
-            jogadores[1].add_dindin(jogadores[1].apostas)                      
-            print('dealer estourou')
-            print(dealer.soma, dealer.banca)              
+    y = 0
+    for deal in jogadores:
+        if jogadores[y].status_rodada == True:
+            while dealer.soma < 17 or dealer.soma <= jogadores[y].soma:
+                dealer.mao_dealer(baralho.tira_carta())
+            if dealer.soma <=21:
+                if dealer.soma > jogadores[y].soma and jogadores[y].status_rodada == True:
+                    dealer.add_dindin(jogadores[y].apostas)
+                    print(dealer.banca)
+                    y += 1
+                elif dealer.soma < jogadores[y].soma and jogadores[y].status_rodada == True:
+                    dealer.tira_dindin(jogadores[y].apostas)
+                    jogadores[y].add_dindin(jogadores[y].apostas*2)
+                    print(jogadores[y].carteira)
+                    print(dealer.banca)
+                    y += 1
+                elif dealer.soma == jogadores[y].soma and jogadores[y].status_rodada == True:
+                    jogadores[y].add_dindin(jogadores[y].apostas)
+                    print(jogadores[y].carteira)
+                    print(dealer.banca)
+                    y += 1
+                else:
+                    print('alguma merda deu errado, pq não tem else aqui. Logica dealer')
+            elif dealer.soma > 21 and jogadores[y].status_rodada == True:
+                jogadores[y].add_dindin(jogadores[y].apostas*2)
+                dealer.tira_dindin(jogadores[y].apostas)                     
+                print('dealer estourou')
+                print(jogadores[y].nome,jogadores[y].carteira)
+                print(dealer.soma, dealer.banca)
+                y += 1
     else:    
-        print('Essa porra imprimiu certo?', dealer.soma)       
+        print('Essa porra imprimiu certo?', dealer.soma)
+        reset_rodada()
+        rodada1()
     return
 
 def rodada2():
@@ -258,6 +277,7 @@ def rodada2():
                     z += 1
                 elif jogadores[z].soma == 21:
                     print('21 no double, caceeete!')
+                    z += 1
                 else:
                     z += 1
             elif decisao[0] == 'P':
@@ -278,16 +298,8 @@ jogadores = []
 baralho = Baralho()
 dealer = Dealer()
 
-clear_output()
-
 print('Bem-vindo ao jogo de BlackJack em texto para iniciantes do python ^^')
 nova_partida()
-
-
-
-
-
-
 
 
 
