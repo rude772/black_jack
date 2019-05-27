@@ -3,52 +3,26 @@
 """
 Created on Fri May 24 19:30:42 2019
 @author: tiago
-
-Objetos:
-
-# BLACKJACK: ÀS E OUTRA CARTA QUE VALE 10 PONTOS    
-
-Funções:
-    
-hit()
-stop()
-double()
-split()
-
-primeira_rodada() #primeira rodada se diferencia por permitir split e double e por ser a única que distribui duas cartas. É na primeira rodada que os jogadores apostam.
-rodada() #a cada rodada, podemos chamar as funcoes: hit, stop, double. E checar se tem condicoes da funcao split e 21.
-checa_as() # sempre checar se existe uma carta 'Às' na mao dos jogadores. 'Às' pode ser 1 ou 11, se o 'Às' + outras cardas <= 21
-checa_estouro() #a cada rodada, eu checo se jogador ou dealer estourou
-checa_split() #a cada rodada eu checo se tenho opção split (duas cartas com o mesmo valor pode splitar)
-maior_mao() #antes da rodada do dealer, verifica quais as maiores mãos que irão jogar contra dealer. Pode ser uma ou mais, apenas se empatarem no maior valor.
-dealer_vencendo() #dealer checa se está vencendo, para decidir se continua apostando ou não. Se dealer está perdendo, tenta ganhar ou empatar sempre.
-dealer_acao()
-vencedor() #Checa se todos os jogadores + dealer já deram stop ou estouro e calcula o vencedor
-ver_fimdejogo() # Ao final de cada turno, verificar se atingiu as condições de final de jogo
-fim_jogo()
-# Mostra campeão: Jogador com maior valor de dinheiro, se dealer igual a zero, ou Game Over.
-# Game over: Se dealer tem dinheiro e os demais não. Se todos os jogadores saíram do jogo em algum começo de turno.
-
-
-Observações:
-Considerar ativo na partida todo jogador cujo status = True. Se jogador sair ou zerar, status == False. 
-
 """
 from random import choice
-
-jogadores = []
+from IPython.display import clear_output
 
 #Cria a classe dos jogadores. Por padrão, todo jogador começa uma partida com 1000 dinheiros e ativo no jogo
 class Jogador(object):
-    def __init__(self, nome, carteira=1000, status=True):
+    cartas_valores = {'A':1,'J':10,'Q':10,'K':10,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10}
+    mao_cartas_jogador = []
+    soma = 0
+    def __init__(self, nome, carteira=1000, status=True, status_rodada=True, apostas=0):
         self.nome = nome
         self.carteira = carteira
         self.status = status
+        self.status_rodada = status_rodada
+        self.apostas = apostas
     
     def aposta(self):
         while True:
             try:
-                valor = int(input('Digite o valor da aposta: '))
+                valor = int(input(f'{self.nome}, digite o valor da aposta: '))
             except:
                 print('Digitar apenas valores inteiros.')
                 continue
@@ -57,9 +31,25 @@ class Jogador(object):
                 continue
             else:
                 self.carteira -= valor
+                self.apostas = valor
                 print('Saldo restante: ', self.carteira)
                 break
         return valor
+
+    def mao_cartas(self, carta, nome):
+        if carta[0].isalpha() or carta[0] != '1':
+            self.mao_valor = self.cartas_valores[carta[0]]
+            self.soma += self.mao_valor
+            self.mao_cartas_jogador.append(carta)
+        else:
+            self.mao_valor = 10
+            self.soma += self.mao_valor
+            self.mao_cartas_jogador.append(carta)
+        return print(self.nome, self.mao_cartas_jogador, self.soma)
+    
+    def reset_mao(self):
+        self.mao_cartas_jogador = []
+        return self.mao_cartas_jogador
     
     def add_dindin(self, valor):
         self.carteira += valor
@@ -69,15 +59,21 @@ class Jogador(object):
         if valor >= self.carteira:
             self.status = False
             self.carteira = 0
-        return print('Você perdeu tudo. Se lascou.')
+            print('Você perdeu tudo. Se lascou.')
+        else:
+            self.carteira -= valor
+            self.apostas += valor
+        return self.carteira
 
 #Cria a classe do dealer, com devido level. O level configura o valor da banca, total de dinheiro do dealer.    
 class Dealer(object):
-    def __init__(self, banca=0, level=0, mao_dealer=[]):
+    cartas_valores = {'A':1,'J':10,'Q':10,'K':10,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10}
+    mao_cartas_dealer = []
+    soma = 0
+    def __init__(self, banca=0, level=0):
         self.banca = banca
         self.level = level
-        self.mao_dealer = mao_dealer
-        
+                
     def add_dindin(self,valor):
         self.banca += valor
         return self.banca
@@ -86,9 +82,16 @@ class Dealer(object):
         self.banca -= valor
         return self.banca
     
-    def add_carta(self,carta):
-        self.mao_dealer.append(carta)
-        return self.mao_dealer
+    def mao_dealer(self, carta):
+        if carta[0].isalpha() or carta[0] != '1':
+            self.mao_valor = self.cartas_valores[carta[0]]
+            self.soma += self.mao_valor
+            self.mao_cartas_dealer.append(carta)
+        else:
+            self.mao_valor = 10
+            self.soma += self.mao_valor
+            self.mao_cartas_dealer.append(carta)
+        return print('Dealer', self.mao_cartas_dealer, self.soma)
     
     def reset_mao(self):
         self.mao_dealer = []
@@ -129,64 +132,165 @@ class Baralho(object):
     def reset(self):
         self.cartas = ['JOuros', '9Ouros', '9Copas', 'KCopas', '5Paus', '6Ouros', '2Ouros', '3Copas', 'QPaus', 'JCopas', '2Espadas', '4Ouros', '9Espadas', '8Paus', '10Copas', '10Paus', '2Paus', '7Espadas', 'KEspadas', '6Paus', '5Espadas', 'AOuros', 'KOuros', '5Copas', '10Ouros', '4Espadas', '10Espadas', '7Ouros', 'QCopas', '2Copas', '8Copas', '7Paus', '9Paus', 'ACopas', '3Espadas', '8Ouros', '5Ouros', 'KPaus', '3Paus', '4Paus', '3Ouros', '4Copas', '7Copas', '6Espadas', 'JEspadas', '6Copas', 'AEspadas', 'QEspadas', '8Espadas', 'QOuros', 'APaus', 'JPaus']
         return self.cartas
-    
-# Cria as regras das mãos que serão jogadas por todos os jogadores a cada turno.
-class Mao(object):
-    cartas_valores = {'A':1,'J':10,'Q':10,'K':10,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10}
-    mao_cartas_jogador = []
-    soma = 0
-    def __init__(self,jogador):
-        self.jogador = jogador
-        
-    def add_jogador(self,jogador):
-        mao_jogador = self.jogador
-        return mao_jogador
-    
-    def mao_cartas(self, carta):
-        if carta[0].isalpha() or carta[0] != '1':
-            self.mao_valor = self.cartas_valores[carta[0]]
-            self.soma += self.mao_valor
-            self.mao_cartas_jogador.append(carta)
-        else:
-            self.mao_valor = 10
-            self.soma += self.mao_valor
-            self.mao_cartas_jogador.append(carta)
-        return self.mao_cartas_jogador, self.soma
 
 def registra_jogador():
     global jogadores
+    global mao_jogadores
     jogadores = [input('Digite nome do jogador: ')]
     novo = input('deseja registrar novo jogador? Sim, Não: ').lower()
     if novo[0] == 's':
         jogadores.append(input('Digite nome do jogador: '))
-    return jogadores
+    return jogadores, mao_jogadores
 
-
-
-
-
-
-# Continuar daqui
 def criar_jogadores():
     global jogadores
+    n = 0
     for x in jogadores:
-        jogadores[0] = Jogador(x)
+        jogadores[n] = Jogador(x)
+        n += 1
     return
 
+def nova_partida():
+    registra_jogador()
+    criar_jogadores()
+    dealer.set_level()
+    rodada1()
+    return
+    
+def rodada1():
+    global jogadores
+    n = 0
+    for x in jogadores:
+        jogadores[n].aposta()
+        jogadores[n].reset_mao()
+        jogadores[n].mao_cartas(baralho.tira_carta(), jogadores[n].nome)
+        jogadores[n].mao_cartas(baralho.tira_carta(), jogadores[n].nome)
+        n += 1
+    dealer.mao_dealer(baralho.tira_carta())
+    dealer.mao_dealer(baralho.tira_carta())
+    rodada2()
+    return
 
-registra_jogador()
-criar_jogadores()
-print(jogadores[0].nome)
-print(jogadores[0].carteira)
-print(jogadores[0].status)
+def dealer_rodada():
+    if jogadores[0].status_rodada == True or jogadores[1].status_rodada == True:
+        while dealer.soma < 17 or dealer.soma <= jogadores[0].soma or dealer.soma <= jogadores[1].soma:
+            dealer.mao_dealer(baralho.tira_carta())
+        if dealer.soma <=21:
+            if dealer.soma > jogadores[0].soma and jogadores[0].status_rodada == True:
+                dealer.add_dindin(jogadores[0].apostas)
+                print(dealer.banca)
+            elif dealer.soma < jogadores[0].soma and jogadores[0].status_rodada == True:
+                dealer.tira_dindin(jogadores[0].apostas)
+                jogadores[0].add_dindin(jogadores[0].apostas*2)
+                print(jogadores[0].carteira)
+                print(dealer.banca)                
+            elif dealer.soma > jogadores[1].soma and jogadores[0].status_rodada == True:
+                dealer.add_dindin(jogadores[1].apostas)
+                print(dealer.banca)
+            elif dealer.soma < jogadores[1].soma and jogadores[0].status_rodada == True:
+                dealer.tira_dindin(jogadores[1].apostas)
+                jogadores[1].add_dindin(jogadores[1].apostas*2)
+                print(jogadores[1].carteira)
+                print(dealer.banca)
+            elif dealer.soma == jogadores[0].soma and jogadores[0].status_rodada == True:
+                jogadores[0].add_dindin(jogadores[0].apostas)
+            elif dealer.soma == jogadores[1].soma and jogadores[0].status_rodada == True:
+                jogadores[1].add_dindin(jogadores[1].apostas)
+            else:
+                print('alguma merda deu errado, pq não tem else aqui. Logica dealer')
+        elif dealer > 21 and jogadores[0].status_rodada == True:
+            jogadores[0].add_dindin(jogadores[0].apostas)                      
+            print('dealer estourou')
+            print(dealer.soma, dealer.banca)
+        elif dealer > 21 and jogadores[1].status_rodada == True:
+            jogadores[1].add_dindin(jogadores[1].apostas)                      
+            print('dealer estourou')
+            print(dealer.soma, dealer.banca)              
+    else:    
+        print('Essa porra imprimiu certo?', dealer.soma)       
+    return
+
+def rodada2():
+    global jogadores
+    z = 0
+    for y in jogadores:
+        if jogadores[z].soma < 21:
+            decisao = input(f'O que você deseja fazer, {jogadores[z].nome}?\nHit (H), Double (D), Parar (P): ').upper()
+            if decisao[0] == 'H':
+                jogadores[z].mao_cartas(baralho.tira_carta(), jogadores[z].nome)
+                if jogadores[z].soma < 21:
+                    decisao2 = input(f'O que você deseja fazer, {jogadores[z].nome}?\nHit (H), Parar (P): ').upper()
+                    while decisao2[0] == 'H' and jogadores[z].soma < 21:
+                        jogadores[z].mao_cartas(baralho.tira_carta(), jogadores[z].nome)
+                        if jogadores[z].soma < 21:
+                            decisao2 = input(f'O que você deseja fazer, {jogadores[z].nome}?\nHit (H), Parar (P): ').upper()
+                    if decisao2[0] == 'H' and jogadores[z].soma == 21:
+                        print('21! no looping do decisao2')
+                        z += 1
+                    elif decisao2[0] == 'H' and jogadores[z].soma > 21:
+                        jogadores[z].status_rodada = False
+                        dealer.add_dindin(jogadores[z].apostas)
+                        print(dealer.banca)
+                        print('estourou no looping do decisao2')
+                        z += 1
+                    elif decisao2[0] == 'P':
+                        print('Parou, caraio no looping da decisao2')
+                        z += 1
+                elif jogadores[z].soma == 21:
+                    print('21!')
+                    z += 1
+                else:
+                    jogadores[z].status_rodada = False
+                    dealer.add_dindin(jogadores[z].apostas)
+                    print(dealer.banca)
+                    print('estourou no primeiro hit antes do looping do decisao2')
+                    z += 1
+            elif decisao[0] == 'D':
+                apostas_ = jogadores[z].apostas
+                jogadores[z].tira_dindin(apostas_)
+                print('Saldo restante: ', jogadores[z].carteira)
+                jogadores[z].mao_cartas(baralho.tira_carta(), jogadores[z].nome)
+                if jogadores[z].soma > 21:
+                    jogadores[z].status_rodada = False
+                    dealer.add_dindin(jogadores[z].apostas)
+                    print(dealer.banca)
+                    print('Se lascou no Double, estourou')
+                    z += 1
+                elif jogadores[z].soma == 21:
+                    print('21 no double, caceeete!')
+                else:
+                    z += 1
+            elif decisao[0] == 'P':
+                print('Parou de apostar')
+                z += 1         
+        elif jogadores[z].soma == 21:
+            ('BlackJack, porra!')
+            z += 1
+        else:
+            print('Estourou no Hit.')
+            dealer.add_dindin(jogadores[z].apostas)
+            print(dealer.banca)
+            z += 1
+    dealer_rodada()
+    return
+
+jogadores = []
+baralho = Baralho()
+dealer = Dealer()
+
+clear_output()
+
+print('Bem-vindo ao jogo de BlackJack em texto para iniciantes do python ^^')
+nova_partida()
 
 
-    
-    
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
+
+
+
 
