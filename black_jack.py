@@ -8,7 +8,7 @@ from random import choice
 
 #Cria a classe dos jogadores. Por padrão, todo jogador começa uma partida com 1000 dinheiros e ativo no jogo
 class Jogador(object):
-    cartas_valores = {'A':10,'J':10,'Q':10,'K':10,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10}
+    cartas_valores = {'A':11,'J':10,'Q':10,'K':10,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10}
     mao_cartas_jogador = []
     soma = 0
     def __init__(self, nome, carteira=1000, status=True, status_rodada=True, apostas=0):
@@ -47,8 +47,8 @@ class Jogador(object):
             self.mao_cartas_jogador.append(carta)
         for checa_as in self.mao_cartas_jogador:
             if self.mao_cartas_jogador[c][0] == 'A' and self.soma > 21:
-                self.soma -= 9
-                c += 1
+                self.soma -= 10
+            c += 1
         return print(self.nome, self.mao_cartas_jogador, self.soma)
     
     def reset_mao(self):
@@ -73,7 +73,7 @@ class Jogador(object):
 
 #Cria a classe do dealer, com devido level. O level configura o valor da banca, total de dinheiro do dealer.    
 class Dealer(object):
-    cartas_valores = {'A':1,'J':10,'Q':10,'K':10,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10}
+    cartas_valores = {'A':11,'J':10,'Q':10,'K':10,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10}
     mao_cartas_dealer = []
     soma = 0
     def __init__(self, banca=0, level=0):
@@ -85,7 +85,11 @@ class Dealer(object):
         return self.banca
     
     def tira_dindin(self,valor):
-        self.banca -= valor
+        if valor >= self.banca:
+            self.banca = 0
+            print('Dealer perdeu tudo. Se lascou.')
+        else:
+            self.banca -= valor
         return self.banca
     
     def mao_dealer(self, carta):
@@ -100,8 +104,8 @@ class Dealer(object):
             self.mao_cartas_dealer.append(carta)
         for checa_as in self.mao_cartas_dealer:
             if self.mao_cartas_dealer[c][0] == 'A' and self.soma > 21:
-                self.soma -= 9
-                c += 1
+                self.soma -= 10
+            c += 1
         return print('Dealer', self.mao_cartas_dealer, self.soma)
     
     def reset_mao(self):
@@ -172,10 +176,11 @@ def rodada1():
     global jogadores
     n = 0
     for x in jogadores:
-        jogadores[n].aposta()
-        jogadores[n].reset_mao()
-        jogadores[n].mao_cartas(baralho.tira_carta(), jogadores[n].nome)
-        jogadores[n].mao_cartas(baralho.tira_carta(), jogadores[n].nome)
+        if jogadores[n].status == True:
+            jogadores[n].aposta()
+            jogadores[n].reset_mao()
+            jogadores[n].mao_cartas(baralho.tira_carta(), jogadores[n].nome)
+            jogadores[n].mao_cartas(baralho.tira_carta(), jogadores[n].nome)
         n += 1
     dealer.mao_dealer(baralho.tira_carta())
     dealer.mao_dealer(baralho.tira_carta())
@@ -189,8 +194,23 @@ def reset_rodada():
     j = 0
     for reset in jogadores:
         jogadores[j].reset_mao()
+        jogadores[j].apostas = 0
         j += 1
     return
+
+def checa_fim():
+    f = 0
+    for fim in jogadores:
+        if jogadores[f].carteira == 0:
+            jogadores[f].status = False
+        f += 1
+    if jogadores[0].status == False and jogadores[1].status == False:
+        print('Game Over! Configurar input de fim de jogo')
+    elif dealer.banca == 0:
+        print('Parabéns! Vocês venceram! Bateram a banca!')
+    else:
+        print('Ninguém ganhou ainda, nem perdeu. Todo mundo perdeu.')
+    return 'Dealer', dealer.banca, jogadores[0].nome, jogadores[0].carteira, jogadores[1].nome, jogadores[1].carteira
 
 def dealer_rodada():
     y = 0
@@ -223,17 +243,16 @@ def dealer_rodada():
                 print(jogadores[y].nome,jogadores[y].carteira)
                 print(dealer.soma, dealer.banca)
                 y += 1
-    else:    
-        print('Essa porra imprimiu certo?', dealer.soma)
-        reset_rodada()
-        rodada1()
+        else:    
+            y += 1
+            print('Essa porra imprimiu certo?', dealer.soma)
     return
 
 def rodada2():
     global jogadores
     z = 0
     for y in jogadores:
-        if jogadores[z].soma < 21:
+        if jogadores[z].soma < 21 and jogadores[z].status == True:
             decisao = input(f'O que você deseja fazer, {jogadores[z].nome}?\nHit (H), Double (D), Parar (P): ').upper()
             if decisao[0] == 'H':
                 jogadores[z].mao_cartas(baralho.tira_carta(), jogadores[z].nome)
@@ -283,15 +302,15 @@ def rodada2():
             elif decisao[0] == 'P':
                 print('Parou de apostar')
                 z += 1         
-        elif jogadores[z].soma == 21:
+        elif jogadores[z].soma == 21 and jogadores[z].status == True:
             ('BlackJack, porra!')
             z += 1
         else:
-            print('Estourou no Hit.')
-            dealer.add_dindin(jogadores[z].apostas)
-            print(dealer.banca)
             z += 1
     dealer_rodada()
+    checa_fim()
+    reset_rodada()
+    rodada1()
     return
 
 jogadores = []
